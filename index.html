@@ -106,80 +106,14 @@ button{
 </div>
 
 <script>
-const GOOGLE_SCRIPT_URL = "PEGAR_TU_URL_APPS_SCRIPT_AQUI";
+const GOOGLE_SCRIPT_URL = "https://forms.elias-page.com/webhook/5079687e-673d-447d-af4c-81bc22af1747";
 
-const OPTIONS = [
-  // NIVEL 1 (con input)
-  {code:"E",desc:"Empecé Matriz",row:1,input:{show:true,label:"Ingresar número",placeholder:"Ejemplo: 110",validate:/^[0-9]+$/}},
-  {code:"C",desc:"Cajón",row:1,input:{show:true,label:"Ingresar número",placeholder:"Ejemplo: 1500",validate:/^[0-9]+$/}},
+/* ... tu OPTIONS, render, etc ... */
 
-  // SIN INPUT
-  {code:"PB",desc:"Paré Baño",row:2,input:{show:false}},
-  {code:"BC",desc:"Busqué Cajón",row:2,input:{show:false}},
-  {code:"MOV",desc:"Movimiento",row:2,input:{show:false}},
-  {code:"LIMP",desc:"Limpieza",row:2,input:{show:false}},
-  {code:"Perm",desc:"Permiso",row:2,input:{show:false}},
-
-  {code:"AL",desc:"Ayuda Logística",row:3,input:{show:false}},
-  {code:"PR",desc:"Paré Carga Rollo",row:3,input:{show:false}},
-  {code:"CM",desc:"Cambiar Matriz",row:3,input:{show:false}},
-  {code:"RM",desc:"Rotura Matriz",row:3,input:{show:false}},
-  {code:"PC",desc:"Paré Comida",row:3,input:{show:false}},
-  {code:"RD",desc:"Rollo Fleje Doblado",row:3,input:{show:false}}
-];
-
-let selected=null;
-
-function render(){
-  row1.innerHTML="";row2.innerHTML="";row3.innerHTML="";
-  OPTIONS.forEach(o=>{
-    const d=document.createElement("div");
-    d.className="box";
-    d.innerHTML=`<div class="box-title">${o.code}</div><div class="box-desc">${o.desc}</div>`;
-    d.onclick=()=>selectOption(o);
-    (o.row===1?row1:o.row===2?row2:row3).appendChild(d);
-  });
-}
-render();
-
-function goToOptions(){
-  if(!legajoInput.value) return alert("Ingresá el número de legajo");
-  legajoScreen.classList.add("hidden");
-  optionsScreen.classList.remove("hidden");
-}
-
-function backToLegajo(){
-  optionsScreen.classList.add("hidden");
-  legajoScreen.classList.remove("hidden");
-}
-
-function selectOption(opt){
-  selected=opt;
-  selectedArea.classList.remove("hidden");
-  selectedBox.innerText=opt.code;
-  selectedDesc.innerText=opt.desc;
-  error.innerText="";
-  textInput.value="";
-
-  if(opt.input.show){
-    inputArea.classList.remove("hidden");
-    inputLabel.innerText=opt.input.label;
-    textInput.placeholder=opt.input.placeholder;
-  }else{
-    inputArea.classList.add("hidden");
-  }
-}
-
-function resetSelection(){
-  selected=null;
-  selectedArea.classList.add("hidden");
-  error.innerText="";
-}
-
-function send(){
+async function send(){
   if(!selected) return;
 
-  let texto=textInput.value;
+  let texto = textInput.value;
 
   if(selected.input.show){
     if(!selected.input.validate.test(texto)){
@@ -187,29 +121,55 @@ function send(){
       return;
     }
   } else {
-    texto="";
+    texto = "";
   }
 
-  fetch(GOOGLE_SCRIPT_URL,{
-    method:"POST",
-    body:JSON.stringify({
-      legajo:legajoInput.value,
-      opcion:selected.code,
-      descripcion:selected.desc,
-      texto:texto
-    })
-  }).catch(()=>{});
+  const payload = {
+    legajo: String(legajoInput.value || "").trim(),
+    opcion: selected.code,
+    descripcion: selected.desc,
+    texto: String(texto || "").trim(),
+    ts: new Date().toISOString()
+  };
 
-  alert("Registro enviado correctamente");
+  // timeout (10s)
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 10000);
 
-  resetSelection();
-  optionsScreen.classList.add("hidden");
-  legajoScreen.classList.remove("hidden");
-  legajoInput.value="";
+  try{
+    const res = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    clearTimeout(t);
+
+    if(!res.ok){
+      error.innerText = `No se pudo enviar (HTTP ${res.status}). Revisá WiFi o avisá al supervisor.`;
+      return;
+    }
+
+    alert("Registro enviado correctamente");
+
+    resetSelection();
+    optionsScreen.classList.add("hidden");
+    legajoScreen.classList.remove("hidden");
+    legajoInput.value="";
+
+  }catch(e){
+    clearTimeout(t);
+    error.innerText = "No se pudo enviar. Revisá WiFi o avisá al supervisor.";
+  }
 }
 </script>
 
+
 </body>
 </html>
+
 
 
