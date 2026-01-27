@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro Producción</title>
+
+<style>
+body{font-family:Arial,sans-serif;margin:0;padding:12px;}
+.hidden{display:none;}
+
+button{
+  width:100%;padding:16px;font-size:22px;
+  margin-top:14px;border-radius:6px;
+}
+.primary-btn{background:#1e6bd6;color:#fff;border:none;}
+
+#legajoScreen h1{font-size:34px;text-align:center;}
+#legajoInput{width:100%;font-size:32px;padding:12px;text-align:center;}
+
+.row{display:grid;gap:10px;margin-top:12px;}
+.row-2{grid-template-columns:repeat(2,1fr);}
+.row-5{grid-template-columns:repeat(5,1fr);}
+.row-6{grid-template-columns:repeat(6,1fr);}
+
+.box{
+  border:2px solid #333;
+  padding:12px 6px;
+  text-align:center;
+  cursor:pointer;
+}
+.box-title{font-size:20px;font-weight:bold;}
+.box-desc{font-size:11px;margin-top:4px;}
+
+.top-bar{display:flex;align-items:center;margin-bottom:6px;}
+.back-top{font-size:26px;cursor:pointer;}
+.back-label{font-size:14px;margin-left:8px;color:#444;cursor:pointer;}
+
+.selected-container{
+  display:flex;align-items:center;justify-content:center;margin-top:16px;
+}
+.back-arrow{font-size:30px;cursor:pointer;margin-right:10px;}
+.selected-box{
+  border:2px solid #333;
+  padding:10px 22px;
+  font-size:28px;font-weight:bold;
+  color:#1e6bd6;
+}
+.selected-desc{
+  margin-left:12px;font-size:18px;font-weight:bold;
+}
+
+.label{margin-top:14px;font-size:22px;text-align:center;}
+.text-input{
+  width:100%;height:70px;font-size:64px;
+  text-align:center;margin-top:8px;
+}
+.text-input::placeholder{font-size:26px;color:#aaa;}
+.error{color:red;margin-top:8px;font-size:18px;}
+</style>
+</head>
+
+<body>
+
+<!-- LEGAJO -->
+<div id="legajoScreen">
+  <h1>Ingresá tu número de legajo</h1>
+  <input id="legajoInput" type="number" inputmode="numeric">
+  <button class="primary-btn" onclick="goToOptions()">Continuar</button>
+</div>
+
+<!-- OPCIONES -->
+<div id="optionsScreen" class="hidden">
+
+  <div class="top-bar">
+    <div class="back-top" onclick="backToLegajo()">←</div>
+    <div class="back-label" onclick="backToLegajo()">Volver a pantalla inicial</div>
+  </div>
+
+  <!-- NIVEL 1 -->
+  <div class="row row-2" id="row1"></div>
+
+  <!-- NIVEL 2 -->
+  <div class="row row-5" id="row2"></div>
+
+  <!-- NIVEL 3 -->
+  <div class="row row-6" id="row3"></div>
+
+  <div id="selectedArea" class="hidden">
+
+    <div class="selected-container">
+      <div class="back-arrow" onclick="resetSelection()">←</div>
+      <div id="selectedBox" class="selected-box"></div>
+      <div id="selectedDesc" class="selected-desc"></div>
+    </div>
+
+    <div id="inputArea" class="hidden">
+      <div id="inputLabel" class="label"></div>
+      <input id="textInput" class="text-input">
+    </div>
+
+    <button class="primary-btn" onclick="send()">Enviar</button>
+    <div id="error" class="error"></div>
+  </div>
+
+</div>
+
+<script>
+const GOOGLE_SCRIPT_URL = "PEGAR_TU_URL_APPS_SCRIPT_AQUI";
+
+const OPTIONS = [
+  // NIVEL 1 (con input)
+  {code:"E",desc:"Empecé Matriz",row:1,input:{show:true,label:"Ingresar número",placeholder:"Ejemplo: 110",validate:/^[0-9]+$/}},
+  {code:"C",desc:"Cajón",row:1,input:{show:true,label:"Ingresar número",placeholder:"Ejemplo: 1500",validate:/^[0-9]+$/}},
+
+  // SIN INPUT
+  {code:"PB",desc:"Paré Baño",row:2,input:{show:false}},
+  {code:"BC",desc:"Busqué Cajón",row:2,input:{show:false}},
+  {code:"MOV",desc:"Movimiento",row:2,input:{show:false}},
+  {code:"LIMP",desc:"Limpieza",row:2,input:{show:false}},
+  {code:"Perm",desc:"Permiso",row:2,input:{show:false}},
+
+  {code:"AL",desc:"Ayuda Logística",row:3,input:{show:false}},
+  {code:"PR",desc:"Paré Carga Rollo",row:3,input:{show:false}},
+  {code:"CM",desc:"Cambiar Matriz",row:3,input:{show:false}},
+  {code:"RM",desc:"Rotura Matriz",row:3,input:{show:false}},
+  {code:"PC",desc:"Paré Comida",row:3,input:{show:false}},
+  {code:"RD",desc:"Rollo Fleje Doblado",row:3,input:{show:false}}
+];
+
+let selected=null;
+
+function render(){
+  row1.innerHTML="";row2.innerHTML="";row3.innerHTML="";
+  OPTIONS.forEach(o=>{
+    const d=document.createElement("div");
+    d.className="box";
+    d.innerHTML=`<div class="box-title">${o.code}</div><div class="box-desc">${o.desc}</div>`;
+    d.onclick=()=>selectOption(o);
+    (o.row===1?row1:o.row===2?row2:row3).appendChild(d);
+  });
+}
+render();
+
+function goToOptions(){
+  if(!legajoInput.value) return alert("Ingresá el número de legajo");
+  legajoScreen.classList.add("hidden");
+  optionsScreen.classList.remove("hidden");
+}
+
+function backToLegajo(){
+  optionsScreen.classList.add("hidden");
+  legajoScreen.classList.remove("hidden");
+}
+
+function selectOption(opt){
+  selected=opt;
+  selectedArea.classList.remove("hidden");
+  selectedBox.innerText=opt.code;
+  selectedDesc.innerText=opt.desc;
+  error.innerText="";
+  textInput.value="";
+
+  if(opt.input.show){
+    inputArea.classList.remove("hidden");
+    inputLabel.innerText=opt.input.label;
+    textInput.placeholder=opt.input.placeholder;
+  }else{
+    inputArea.classList.add("hidden");
+  }
+}
+
+function resetSelection(){
+  selected=null;
+  selectedArea.classList.add("hidden");
+  error.innerText="";
+}
+
+function send(){
+  if(!selected) return;
+
+  let texto=textInput.value;
+
+  if(selected.input.show){
+    if(!selected.input.validate.test(texto)){
+      error.innerText="Solo se permiten números";
+      return;
+    }
+  } else {
+    texto="";
+  }
+
+  fetch(GOOGLE_SCRIPT_URL,{
+    method:"POST",
+    body:JSON.stringify({
+      legajo:legajoInput.value,
+      opcion:selected.code,
+      descripcion:selected.desc,
+      texto:texto
+    })
+  }).catch(()=>{});
+
+  alert("Registro enviado correctamente");
+
+  resetSelection();
+  optionsScreen.classList.add("hidden");
+  legajoScreen.classList.remove("hidden");
+  legajoInput.value="";
+}
+</script>
+
+</body>
+</html>
+
