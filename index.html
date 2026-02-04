@@ -1,410 +1,62 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Registro Producción</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro Producción</title>
+  <link rel="stylesheet" href="styles.css" />
 
-<style>
-body{font-family:Arial,sans-serif;margin:0;padding:12px;}
-.hidden{display:none;}
-
-button{
-  width:100%;padding:16px;font-size:22px;
-  margin-top:14px;border-radius:6px;
-}
-.primary-btn{background:#1e6bd6;color:#fff;border:none;}
-
-#legajoScreen h1{font-size:34px;text-align:center;}
-#legajoInput{width:100%;font-size:32px;padding:12px;text-align:center;}
-
-.row{display:grid;gap:10px;margin-top:12px;}
-.row-2{grid-template-columns:repeat(2,1fr);}
-.row-5{grid-template-columns:repeat(5,1fr);}
-.row-6{grid-template-columns:repeat(6,1fr);}
-
-.box{
-  border:2px solid #333;
-  padding:12px 6px;
-  text-align:center;
-  cursor:pointer;
-}
-.box-title{font-size:20px;font-weight:bold;}
-.box-desc{font-size:11px;margin-top:4px;}
-
-.top-bar{display:flex;align-items:center;margin-bottom:6px;}
-.back-top{font-size:26px;cursor:pointer;}
-.back-label{font-size:14px;margin-left:8px;color:#444;cursor:pointer;}
-
-.selected-container{
-  display:flex;align-items:center;justify-content:center;margin-top:16px;
-}
-.back-arrow{font-size:30px;cursor:pointer;margin-right:10px;}
-.selected-box{
-  border:2px solid #333;
-  padding:10px 22px;
-  font-size:28px;font-weight:bold;
-  color:#1e6bd6;
-}
-.selected-desc{
-  margin-left:12px;font-size:18px;font-weight:bold;
-}
-
-.label{margin-top:14px;font-size:22px;text-align:center;}
-.text-input{
-  width:100%;height:70px;font-size:64px;
-  text-align:center;margin-top:8px;
-}
-.text-input::placeholder{font-size:26px;color:#aaa;}
-.error{color:red;margin-top:8px;font-size:18px;}
-
-/* ===================== HISTORIAL EN PANTALLA LEGAJO ===================== */
-.history-wrap{
-  margin-top:14px;
-  border:2px solid #ddd;
-  border-radius:8px;
-  padding:10px;
-  background:#fafafa;
-}
-.history-title{
-  font-size:16px;
-  font-weight:bold;
-  color:#333;
-  margin-bottom:8px;
-}
-.history-empty{
-  color:#777;
-  font-size:14px;
-}
-.history-item{
-  border:1px solid #e3e3e3;
-  background:#fff;
-  border-radius:8px;
-  padding:10px;
-  margin-top:8px;
-}
-.history-item .line1{
-  font-weight:bold;
-  font-size:14px;
-  color:#1e6bd6;
-  margin-bottom:4px;
-}
-.history-item .line2{
-  font-size:13px;
-  color:#333;
-}
-/* ======================================================================= */
-</style>
+  <!-- opcional: evita el 404 del favicon -->
+  <link rel="icon" href="data:,">
 </head>
 
 <body>
 
-<!-- LEGAJO -->
-<div id="legajoScreen">
-  <h1>Ingresá tu número de legajo</h1>
-  <input id="legajoInput" type="number" inputmode="numeric">
-  <button id="btnContinuar" class="primary-btn">Continuar</button>
+  <!-- LEGAJO -->
+  <div id="legajoScreen">
+    <h1>Ingresá tu número de legajo</h1>
+    <input id="legajoInput" type="number" inputmode="numeric">
+    <button id="btnContinuar" class="primary-btn">Continuar</button>
 
-  <!-- HISTORIAL (últimos 2) -->
-  <div class="history-wrap">
-    <div class="history-title">Últimos 2 reportes de este legajo (en este dispositivo)</div>
-    <div id="legajoHistoryContent" class="history-empty">Ingresá tu legajo para ver el historial</div>
-  </div>
-</div>
-
-<!-- OPCIONES -->
-<div id="optionsScreen" class="hidden">
-
-  <div class="top-bar">
-    <div id="btnBackTop" class="back-top">←</div>
-    <div id="btnBackLabel" class="back-label">Volver a pantalla inicial</div>
+    <!-- RESUMEN COOKIES DEL DÍA -->
+    <div class="history-wrap">
+      <div class="history-title">Resumen del día (en este dispositivo)</div>
+      <div id="daySummary" class="history-empty">Ingresá tu legajo para ver el resumen</div>
+    </div>
   </div>
 
-  <div class="row row-2" id="row1"></div>
-  <div class="row row-5" id="row2"></div>
-  <div class="row row-6" id="row3"></div>
+  <!-- OPCIONES -->
+  <div id="optionsScreen" class="hidden">
 
-  <div id="selectedArea" class="hidden">
-    <div class="selected-container">
-      <div id="btnResetSelection" class="back-arrow">←</div>
-      <div id="selectedBox" class="selected-box"></div>
-      <div id="selectedDesc" class="selected-desc"></div>
+    <div class="top-bar">
+      <div id="btnBackTop" class="back-top">←</div>
+      <div id="btnBackLabel" class="back-label">Volver a pantalla inicial</div>
     </div>
 
-    <div id="inputArea" class="hidden">
-      <div id="inputLabel" class="label"></div>
-      <input id="textInput" class="text-input">
-    </div>
+    <div class="row row-2" id="row1"></div>
+    <div class="row row-5" id="row2"></div>
+    <div class="row row-6" id="row3"></div>
 
-    <button id="btnEnviar" class="primary-btn">Enviar</button>
-    <div id="error" class="error"></div>
-  </div>
-</div>
-
-<script>
-const GOOGLE_SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyagmTRQhPkf2RLqu3sqWynPMA6p1_S4vIQ9uS8FRCArLyzXeUdgAMHk6GLpo0RDL4Q/exec";
-
-// ELEMENTOS
-const legajoScreen   = document.getElementById("legajoScreen");
-const optionsScreen  = document.getElementById("optionsScreen");
-const legajoInput    = document.getElementById("legajoInput");
-
-const row1 = document.getElementById("row1");
-const row2 = document.getElementById("row2");
-const row3 = document.getElementById("row3");
-
-const selectedArea = document.getElementById("selectedArea");
-const selectedBox  = document.getElementById("selectedBox");
-const selectedDesc = document.getElementById("selectedDesc");
-const inputArea    = document.getElementById("inputArea");
-const inputLabel   = document.getElementById("inputLabel");
-const textInput    = document.getElementById("textInput");
-const error        = document.getElementById("error");
-
-const btnContinuar      = document.getElementById("btnContinuar");
-const btnBackTop        = document.getElementById("btnBackTop");
-const btnBackLabel      = document.getElementById("btnBackLabel");
-const btnResetSelection = document.getElementById("btnResetSelection");
-const btnEnviar         = document.getElementById("btnEnviar");
-
-// OPCIONES
-const OPTIONS = [
-  {code:"E",desc:"Empecé Matriz",row:1,input:{show:true,label:"Ingresar número",placeholder:"Ejemplo: 110",validate:/^[0-9]+$/}},
-  {code:"C",desc:"Cajón",row:1,input:{show:true,label:"Ingresar número",placeholder:"Ejemplo: 1500",validate:/^[0-9]+$/}},
-  {code:"PB",desc:"Paré Baño",row:2,input:{show:false}},
-  {code:"BC",desc:"Busqué Cajón",row:2,input:{show:false}},
-  {code:"MOV",desc:"Movimiento",row:2,input:{show:false}},
-  {code:"LIMP",desc:"Limpieza",row:2,input:{show:false}},
-  {code:"Perm",desc:"Permiso",row:2,input:{show:false}},
-  {code:"AL",desc:"Ayuda Logística",row:3,input:{show:false}},
-  {code:"PR",desc:"Paré Carga Rollo",row:3,input:{show:false}},
-  {code:"CM",desc:"Cambiar Matriz",row:3,input:{show:false}},
-  {code:"RM",desc:"Rotura Matriz",row:3,input:{show:false}},
-  {code:"PC",desc:"Paré Comida",row:3,input:{show:false}},
-  {code:"RD",desc:"Rollo Fleje Doblado",row:3,input:{show:false}}
-];
-
-let selected = null;
-
-/* =========================================================
-   COOKIES: guardar historial por legajo (últimos 2)
-   ========================================================= */
-const HISTORY_COOKIE = "legajo_history_v1";
-const HISTORY_DAYS = 365;
-
-function setCookie(name, value, days) {
-  const d = new Date();
-  d.setTime(d.getTime() + (days*24*60*60*1000));
-  const expires = "expires=" + d.toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; ${expires}; path=/; SameSite=Lax`;
-}
-
-function getCookie(name) {
-  const cookies = document.cookie ? document.cookie.split("; ") : [];
-  for (const c of cookies) {
-    const [k, ...rest] = c.split("=");
-    if (k === name) return decodeURIComponent(rest.join("="));
-  }
-  return "";
-}
-
-function readHistoryMap() {
-  try {
-    const raw = getCookie(HISTORY_COOKIE);
-    if (!raw) return {};
-    const obj = JSON.parse(raw);
-    if (obj && typeof obj === "object") return obj;
-    return {};
-  } catch {
-    return {};
-  }
-}
-
-function writeHistoryMap(map) {
-  setCookie(HISTORY_COOKIE, JSON.stringify(map), HISTORY_DAYS);
-}
-
-function formatDateTime(ts) {
-  try {
-    const d = new Date(ts);
-    return d.toLocaleString("es-AR");
-  } catch {
-    return "";
-  }
-}
-
-function pushHistoryForLegajo(legajo, item) {
-  const map = readHistoryMap();
-  if (!map[legajo]) map[legajo] = [];
-  map[legajo].unshift(item);
-  map[legajo] = map[legajo].slice(0,2);
-  writeHistoryMap(map);
-}
-
-function getHistoryForLegajo(legajo) {
-  const map = readHistoryMap();
-  const arr = map[legajo];
-  return Array.isArray(arr) ? arr : [];
-}
-
-function renderLegajoHistory(legajo) {
-  const container = document.getElementById("legajoHistoryContent");
-  if (!container) return;
-
-  if (!legajo) {
-    container.className = "history-empty";
-    container.innerText = "Ingresá tu legajo para ver el historial";
-    return;
-  }
-
-  const hist = getHistoryForLegajo(String(legajo));
-  if (!hist.length) {
-    container.className = "history-empty";
-    container.innerText = "No hay reportes guardados para este legajo en este dispositivo.";
-    return;
-  }
-
-  container.className = "";
-  container.innerHTML = hist.map(h => `
-    <div class="history-item">
-      <div class="line1">${h.opcion} — ${h.descripcion}</div>
-      <div class="line2">
-        ${h.texto ? `Dato: <b>${h.texto}</b><br>` : ""}
-        ${h.ts ? `Fecha: ${formatDateTime(h.ts)}` : ""}
+    <div id="selectedArea" class="hidden">
+      <div class="selected-container">
+        <div id="btnResetSelection" class="back-arrow">←</div>
+        <div id="selectedBox" class="selected-box"></div>
+        <div id="selectedDesc" class="selected-desc"></div>
       </div>
+
+      <div id="inputArea" class="hidden">
+        <div id="inputLabel" class="label"></div>
+        <input id="textInput" class="text-input">
+      </div>
+
+      <!-- INFO MATRIZ (solo para Cajón) -->
+      <div id="matrizInfo" class="matriz-info hidden"></div>
+
+      <button id="btnEnviar" class="primary-btn">Enviar</button>
+      <div id="error" class="error"></div>
     </div>
-  `).join("");
-}
+  </div>
 
-let legajoTimer = null;
-legajoInput.addEventListener("input", () => {
-  clearTimeout(legajoTimer);
-  legajoTimer = setTimeout(() => {
-    renderLegajoHistory(legajoInput.value);
-  }, 150);
-});
-/* ========================================================= */
-
-// RENDER OPCIONES
-function render(){
-  row1.innerHTML=""; row2.innerHTML=""; row3.innerHTML="";
-  OPTIONS.forEach(o=>{
-    const d=document.createElement("div");
-    d.className="box";
-    d.innerHTML=`<div class="box-title">${o.code}</div><div class="box-desc">${o.desc}</div>`;
-    d.addEventListener("click",()=>selectOption(o));
-    (o.row===1?row1:o.row===2?row2:row3).appendChild(d);
-  });
-}
-
-// NAVEGACIÓN
-function goToOptions(){
-  if(!legajoInput.value.toString().trim()){
-    alert("Ingresá el número de legajo");
-    return;
-  }
-  legajoScreen.classList.add("hidden");
-  optionsScreen.classList.remove("hidden");
-}
-
-function backToLegajo(){
-  optionsScreen.classList.add("hidden");
-  legajoScreen.classList.remove("hidden");
-  // al volver, refresca historial del legajo actual
-  renderLegajoHistory(legajoInput.value);
-}
-
-// SELECCIÓN
-function selectOption(opt){
-  selected = opt;
-  selectedArea.classList.remove("hidden");
-  selectedBox.innerText = opt.code;
-  selectedDesc.innerText = opt.desc;
-  error.innerText="";
-  textInput.value="";
-
-  if(opt.input.show){
-    inputArea.classList.remove("hidden");
-    inputLabel.innerText = opt.input.label;
-    textInput.placeholder = opt.input.placeholder;
-  } else {
-    inputArea.classList.add("hidden");
-  }
-}
-
-function resetSelection(){
-  selected=null;
-  selectedArea.classList.add("hidden");
-  error.innerText="";
-}
-
-// ENVÍO A GOOGLE SHEET (vía Apps Script Web App)
-// Nota: no-cors evita bloqueos CORS. El envío se realiza aunque no podamos leer respuesta.
-async function send(){
-  if(!selected) return;
-
-  let texto = textInput.value.trim();
-
-  if(selected.input.show && !selected.input.validate.test(texto)){
-    error.innerText="Solo se permiten números";
-    return;
-  }
-
-  const nowIso = new Date().toISOString();
-
-  const payload = {
-    legajo: legajoInput.value.toString().trim(),
-    opcion: selected.code,
-    descripcion: selected.desc,
-    texto
-  };
-
-  try{
-    await fetch(GOOGLE_SHEET_WEBAPP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(payload),
-      mode: "no-cors"
-    });
-
-    // ✅ Guardar historial local (cookies) por legajo
-    pushHistoryForLegajo(String(payload.legajo), {
-      opcion: payload.opcion,
-      descripcion: payload.descripcion,
-      texto: payload.texto,
-      ts: nowIso
-    });
-
-    // ✅ Refrescar historial en la pantalla inicial (por si vuelve)
-    renderLegajoHistory(payload.legajo);
-
-    alert("Registro enviado correctamente");
-
-    resetSelection();
-    optionsScreen.classList.add("hidden");
-    legajoScreen.classList.remove("hidden");
-    // NO borro el legajo: lo dejo para que se vea el historial inmediatamente
-    // legajoInput.value="";
-
-  }catch(e){
-    error.innerText="No se pudo enviar. Revisá WiFi.";
-    console.log("FETCH ERROR:", e);
-  }
-}
-
-// EVENTOS
-btnContinuar.addEventListener("click",goToOptions);
-btnBackTop.addEventListener("click",backToLegajo);
-btnBackLabel.addEventListener("click",backToLegajo);
-btnResetSelection.addEventListener("click",resetSelection);
-btnEnviar.addEventListener("click",send);
-legajoInput.addEventListener("keydown",e=>{if(e.key==="Enter")goToOptions();});
-
-// Inicial
-render();
-renderLegajoHistory(legajoInput.value);
-</script>
-
+  <script src="app.js"></script>
 </body>
 </html>
-
