@@ -28,7 +28,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function nowMinutesAR() {
-    // minutos desde 00:00 en horario AR
     const parts = new Intl.DateTimeFormat("es-AR", {
       timeZone: "America/Argentina/Buenos_Aires",
       hour: "2-digit",
@@ -45,44 +44,34 @@ document.addEventListener("DOMContentLoaded", () => {
   const APP_TAG = "_Cervantes";
   const VERSION = "_v1";
 
-  const MIGRATION_FLAG = `prod_migrated${APP_TAG}${VERSION}`;   // prod_migrated_Cervantes_v1
-  const LS_PREFIX      = `prod_state${APP_TAG}${VERSION}`;      // prod_state_Cervantes_v1
-  const LS_QUEUE       = `prod_queue${APP_TAG}${VERSION}`;      // prod_queue_Cervantes_v1
-  const DAY_GUARD_KEY  = `prod_day_guard${APP_TAG}${VERSION}`;  // prod_day_guard_Cervantes_v1
+  const MIGRATION_FLAG = `prod_migrated${APP_TAG}${VERSION}`;
+  const LS_PREFIX      = `prod_state${APP_TAG}${VERSION}`;
+  const LS_QUEUE       = `prod_queue${APP_TAG}${VERSION}`;
+  const DAY_GUARD_KEY  = `prod_day_guard${APP_TAG}${VERSION}`;
 
-  /* ================= RESET DIARIO (borrar todo al cambiar el día) ================= */
+  /* ================= RESET DIARIO ================= */
   function clearAllCervantesData() {
-    // borrar todos los estados diarios por legajo
     const statePrefix = `${LS_PREFIX}::`;
-
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
 
     keys.forEach(k => {
       if (!k) return;
-
-      // borra cualquier estado prod_state_Cervantes_v1::...
       if (k.startsWith(statePrefix)) localStorage.removeItem(k);
     });
 
-    // borra cola
     localStorage.removeItem(LS_QUEUE);
-
-    // (opcional) no hace falta borrar MIGRATION_FLAG; lo dejamos para no re-correr migración
-    // localStorage.removeItem(MIGRATION_FLAG);
   }
 
-  const today = todayKeyAR(); // fecha en AR
+  const today = todayKeyAR();
   const lastDay = localStorage.getItem(DAY_GUARD_KEY);
   if (lastDay && lastDay !== today) {
     clearAllCervantesData();
   }
   localStorage.setItem(DAY_GUARD_KEY, today);
-  /* ============================================================================== */
 
   /* ================= LIMPIEZA (1 vez) ================= */
   if (!localStorage.getItem(MIGRATION_FLAG)) {
-    // Limpieza de claves antiguas (incluye nombres viejos sin Cervantes)
     [
       "prod_day_state_ls_v1",
       "prod_send_queue_ls_v1",
@@ -90,14 +79,12 @@ document.addEventListener("DOMContentLoaded", () => {
       "prod_day_state_v7",
       "prod_state_ls_v1",
       "prod_queue_v1",
-      // por si existiera alguna previa de Cervantes (reinstalación)
       `prod_state${APP_TAG}${VERSION}`,
       `prod_queue${APP_TAG}${VERSION}`,
     ].forEach(k => localStorage.removeItem(k));
 
     localStorage.setItem(MIGRATION_FLAG, "1");
   }
-  /* ==================================================== */
 
   /* ================= UUID ================= */
   function uuidv4() {
@@ -170,8 +157,6 @@ document.addEventListener("DOMContentLoaded", () => {
     {code:"RD",desc:"Rollo Fleje Doblado",row:3,input:{show:false}}
   ];
 
-  // ✅ NO son tiempos muertos (Perm se trata como TM doble envío)
-  // ✅ LLgdaTarde NO es TM y NO debe bloquear
   const NON_DOWNTIME_CODES = new Set(["E","C","RM","RD","LLgdaTarde"]);
   const isDowntime = (op) => !NON_DOWNTIME_CODES.has(op);
 
@@ -188,7 +173,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function stateKeyFor(legajo) {
-    // prod_state_Cervantes_v1::DD/MM/YYYY::LEGAJO
     return `${LS_PREFIX}::${todayKeyAR()}::${String(legajo).trim()}`;
   }
 
@@ -532,19 +516,34 @@ document.addEventListener("DOMContentLoaded", () => {
     writeStateForLegajo(legajo, s);
   }
 
-  /* ================= ENVÍO ================= */
+  /* ================= ENVÍO (CON CONFIRMACIÓN REAL) ================= */
+  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
   async function postToSheet(payload) {
-    return fetch(GOOGLE_SHEET_WEBAPP_URL, {
-      method:"POST",
-      body: JSON.stringify(payload),
-      mode:"no-cors",
-      keepalive:true,
-      cache:"no-store",
-    });
+    // ✅ “simple request”: text/plain evita preflight en la mayoría de casos
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 12000);
+
+    try {
+      const res = await fetch(GOOGLE_SHEET_WEBAPP_URL, {
+        method:"POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+        mode:"cors",
+        cache:"no-store",
+        signal: ctrl.signal
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json().catch(()=>null);
+      if (!data || data.ok !== true) throw new Error("Respuesta inválida del WebApp");
+      return data;
+    } finally {
+      clearTimeout(t);
+    }
   }
 
   let isFlushing = false;
-  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
   async function flushQueueOnce() {
     if (isFlushing) return;
@@ -562,13 +561,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const item = q[0];
         const tries = Number(item.__tries || 0);
-        if (tries >= 8) break;
+        if (tries >= 10) break;
 
         try {
-          await postToSheet(item);
+          await postToSheet(item); // ✅ ahora espera OK real
           q.shift();
           writeQueue(q);
-          await sleep(120);
+          await sleep(140);
         } catch {
           item.__tries = tries + 1;
           q[0] = item;
@@ -596,7 +595,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const nowMin = nowMinutesAR();
     const limitMin = 8 * 60 + 30;
-
     if (nowMin <= limitMin) return false;
 
     const day = todayISODateAR();
@@ -689,16 +687,14 @@ document.addEventListener("DOMContentLoaded", () => {
     matrizInfo.classList.add("hidden");
     matrizInfo.innerHTML = "";
     error.innerText = "";
-
     document.querySelectorAll(".box.selected").forEach(x => x.classList.remove("selected"));
 
+    // ✅ encola y fuerza flush con confirmación
     enqueue(payload);
-    flushQueueOnce();
+    await flushQueueOnce();
 
-    setTimeout(() => {
-      btnEnviar.disabled = false;
-      btnEnviar.innerText = prev;
-    }, 250);
+    btnEnviar.disabled = false;
+    btnEnviar.innerText = prev;
   }
 
   /* ================= EVENTOS ================= */
@@ -723,6 +719,6 @@ document.addEventListener("DOMContentLoaded", () => {
   renderOptions();
   renderSummary();
 
-  console.log("app.js OK ✅ (Reset diario + keys _Cervantes_v1)");
+  console.log("app.js OK ✅ (Confirmación real + reset diario + keys _Cervantes_v1)");
 
 });
