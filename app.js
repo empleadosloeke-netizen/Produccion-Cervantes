@@ -157,7 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
     {code:"RD",desc:"Rollo Fleje Doblado",row:3,input:{show:false}}
   ];
 
-  const NON_DOWNTIME_CODES = new Set(["E","C","RM","RD","LLgdaTarde"]);
+  const NON_DOWNTIME_CODES = new Set(["E","C","RM","RD","LT"]);
   const isDowntime = (op) => !NON_DOWNTIME_CODES.has(op);
 
   const sameDowntime = (a,b) =>
@@ -473,7 +473,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateStateAfterSend(legajo, payload) {
     const s = readStateForLegajo(legajo);
 
-    if (payload.opcion === "LLgdaTarde") {
+    if (payload.opcion === "LT") {
       pushLast2(s, payload);
       writeStateForLegajo(legajo, s);
       return;
@@ -604,8 +604,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const latePayload = {
       id: uuidv4(),
       legajo,
-      opcion: "LLgdaTarde",
-      descripcion: "Llegada Tarde",
+      opcion: "LT",
+      descripcion: "LLegada Tarde",
       texto: "",
       tsEvent,
       "Hs Inicio": hsInicioISO,
